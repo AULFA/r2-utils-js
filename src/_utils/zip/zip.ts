@@ -16,7 +16,7 @@ export interface IStreamAndLength {
 export interface IZip {
     hasEntries: () => boolean;
     entriesCount: () => number;
-    hasEntry: (entryPath: string) => boolean;
+    hasEntry: (entryPath: string) => Promise<boolean>;
     getEntries: () => Promise<string[]>;
     entryStreamPromise: (entryPath: string) => Promise<IStreamAndLength>;
     entryStreamRangePromise: (entryPath: string, begin: number, end: number) => Promise<IStreamAndLength>;
@@ -26,7 +26,7 @@ export interface IZip {
 export abstract class Zip implements IZip {
     public abstract hasEntries(): boolean;
     public abstract entriesCount(): number;
-    public abstract hasEntry(entryPath: string): boolean;
+    public abstract hasEntry(entryPath: string): Promise<boolean>;
     public abstract getEntries(): Promise<string[]>;
     public abstract entryStreamPromise(entryPath: string): Promise<IStreamAndLength>;
     public abstract freeDestroy(): void;

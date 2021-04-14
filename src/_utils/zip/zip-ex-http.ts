@@ -6,8 +6,8 @@
 // ==LICENSE-END==
 
 import * as debug_ from "debug";
-import * as request from "request";
-import * as requestPromise from "request-promise-native";
+import { http } from "follow-redirects";
+import { IncomingMessage } from "http";
 import { PassThrough } from "stream";
 import { URL } from "url";
 
@@ -43,11 +43,7 @@ export class ZipExplodedHTTP extends Zip {
         return true; // TODO: hacky
     }
 
-    public hasEntry(_entryPath: string): boolean {
-        return true;
-    }
-
-    public async hasEntryAsync(entryPath: string): Promise<boolean> {
+    public async hasEntry(entryPath: string): Promise<boolean> {
 
         debug(`hasEntryAsync: ${entryPath}`);
 
@@ -65,7 +61,7 @@ export class ZipExplodedHTTP extends Zip {
                 topresolve(false);
             };
 
-            const success = async (response: request.RequestResponse) => {
+            const success = async (response: IncomingMessage) => {
 
                 // Object.keys(response.headers).forEach((header: string) => {
                 //     debug(header + " => " + response.headers[header]);
@@ -83,45 +79,26 @@ export class ZipExplodedHTTP extends Zip {
                 topresolve(true);
             };
 
-            // No response streaming! :(
-            // https://github.com/request/request-promise/issues/90
-            const needsStreamingResponse = true;
-
-            if (needsStreamingResponse) {
-                const promise = new Promise<void>((resolve, reject) => {
-                    request.get({
-                        headers: {},
-                        method: "HEAD",
-                        uri: urlStrEntry,
+            const promise = new Promise<void>((resolve, reject) => {
+                http.request({
+                    ...new URL(urlStrEntry),
+                    headers: {},
+                    method: "HEAD",
+                })
+                    .on("response", async (response: IncomingMessage) => {
+                        await success(response);
+                        resolve();
                     })
-                        .on("response", async (response: request.RequestResponse) => {
-                            await success(response);
-                            resolve();
-                        })
-                        .on("error", async (err: any) => {
-                            await failure(err);
-                            reject();
-                        });
-                });
-                try {
-                    await promise;
-                } catch (err) {
-                    // ignore
-                }
-            } else {
-                let response: requestPromise.FullResponse;
-                try {
-                    // tslint:disable-next-line:await-promise no-floating-promises
-                    response = await requestPromise({
-                        headers: {},
-                        method: "HEAD",
-                        resolveWithFullResponse: true,
-                        uri: urlStrEntry,
-                    });
-                    await success(response);
-                } catch (err) {
-                    await failure(err);
-                }
+                    .on("error", async (err: any) => {
+                        await failure(err);
+                        reject();
+                    })
+                    .end();
+            });
+            try {
+                await promise;
+            } catch (err) {
+                // ignore
             }
         });
     }
@@ -154,7 +131,7 @@ export class ZipExplodedHTTP extends Zip {
                 topreject(err);
             };
 
-            const success = async (response: request.RequestResponse) => {
+            const success = async (response: IncomingMessage) => {
 
                 // Object.keys(response.headers).forEach((header: string) => {
                 //     debug(header + " => " + response.headers[header]);
@@ -203,45 +180,24 @@ export class ZipExplodedHTTP extends Zip {
                 // }
             };
 
-            // No response streaming! :(
-            // https://github.com/request/request-promise/issues/90
-            const needsStreamingResponse = true;
-
-            if (needsStreamingResponse) {
-                const promise = new Promise<void>((resolve, reject) => {
-                    request.get({
-                        headers: {},
-                        method: "GET",
-                        uri: urlStrEntry,
+            const promise = new Promise<void>((resolve, reject) => {
+                http.get({
+                    ...new URL(urlStrEntry),
+                    headers: {},
+                })
+                    .on("response", async (response: IncomingMessage) => {
+                        await success(response);
+                        resolve();
                     })
-                        .on("response", async (response: request.RequestResponse) => {
-                            await success(response);
-                            resolve();
-                        })
-                        .on("error", async (err: any) => {
-                            await failure(err);
-                            reject();
-                        });
-                });
-                try {
-                    await promise;
-                } catch (err) {
-                    // ignore
-                }
-            } else {
-                let response: requestPromise.FullResponse;
-                try {
-                    // tslint:disable-next-line:await-promise no-floating-promises
-                    response = await requestPromise({
-                        headers: {},
-                        method: "GET",
-                        resolveWithFullResponse: true,
-                        uri: urlStrEntry,
+                    .on("error", async (err: any) => {
+                        await failure(err);
+                        reject();
                     });
-                    await success(response);
-                } catch (err) {
-                    await failure(err);
-                }
+            });
+            try {
+                await promise;
+            } catch (err) {
+                // ignore
             }
         });
     }

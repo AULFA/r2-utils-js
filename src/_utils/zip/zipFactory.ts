@@ -5,7 +5,7 @@
 // that can be found in the LICENSE file exposed on Github (readium) in the project repository.
 // ==LICENSE-END==
 
-import * as fs from "fs";
+import * as rnfs from "react-native-fs";
 import { URL } from "url";
 
 import { isHTTP } from "../http/UrlUtils";
@@ -25,7 +25,7 @@ export async function zipLoadPromise(filePath: string): Promise<IZip> {
         return Zip2.loadPromise(filePath);
     }
 
-    const stats = fs.lstatSync(filePath);
+    const stats = await rnfs.stat(filePath);
     if (stats.isDirectory()) {
         return ZipExploded.loadPromise(filePath);
     }

@@ -6,7 +6,7 @@
 // ==LICENSE-END==
 
 import * as debug_ from "debug";
-import * as request from "request";
+import { http } from "follow-redirects";
 import * as unzipper from "unzipper";
 
 import { isHTTP } from "../http/UrlUtils";
@@ -42,12 +42,10 @@ export class Zip3 extends Zip {
         return new Promise<IZip>(async (resolve, reject) => {
             let zip: any;
             try {
-                zip = await unzipper.Open.url(request.get,
+                zip = await unzipper.Open.url(http.get,
                     {
+                        ...new URL(filePath),
                         headers: {},
-                        method: "GET",
-                        uri: filePath,
-                        url: filePath,
                     });
             } catch (err) {
                 debug(err);
@@ -86,7 +84,7 @@ export class Zip3 extends Zip {
         return this.entriesCount() > 0;
     }
 
-    public hasEntry(entryPath: string): boolean {
+    public async hasEntry(entryPath: string): Promise<boolean> {
         return this.hasEntries() && this.entries[entryPath];
     }
 

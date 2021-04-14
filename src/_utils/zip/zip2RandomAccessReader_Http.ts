@@ -6,8 +6,8 @@
 // ==LICENSE-END==
 
 import * as debug_ from "debug";
-import * as request from "request";
-import * as requestPromise from "request-promise-native";
+import { http } from "follow-redirects";
+import { IncomingMessage } from "http";
 import { PassThrough } from "stream";
 import * as yauzl from "yauzl";
 
@@ -76,7 +76,7 @@ export class HttpZipReader extends yauzl.RandomAccessReader {
             // this.stream.end();
         };
 
-        const success = async (res: request.RequestResponse) => {
+        const success = async (res: IncomingMessage) => {
             if (res.statusCode && (res.statusCode < 200 || res.statusCode >= 300)) {
                 failure("HTTP CODE " + res.statusCode);
                 return;
@@ -114,43 +114,12 @@ export class HttpZipReader extends yauzl.RandomAccessReader {
             }
         };
 
-        // No response streaming! :(
-        // https://github.com/request/request-promise/issues/90
-        const needsStreamingResponse = true;
-        if (needsStreamingResponse) {
-            request.get({
-                headers: { Range: `bytes=${range}` },
-                method: "GET",
-                uri: this.url,
-            })
-                .on("response", success)
-                .on("error", failure);
-        } else {
-            // tslint:disable-next-line:no-floating-promises
-            (async () => {
-                let res: requestPromise.FullResponse;
-                try {
-                    // tslint:disable-next-line:await-promise no-floating-promises
-                    res = await requestPromise({
-                        headers: { Range: `bytes=${range}` },
-                        method: "GET",
-                        resolveWithFullResponse: true,
-                        uri: this.url,
-                    });
-                } catch (err) {
-                    failure(err);
-                    return;
-                }
-
-                await success(res);
-            })()
-                // .then(() => {
-                //     debug("done");
-                // }).catch((err) => {
-                //     debug(err);
-                // })
-                ;
-        }
+        http.get({
+            ...new URL(this.url),
+            headers: { Range: `bytes=${range}` },
+        })
+            .on("response", success)
+            .on("error", failure);
 
         return stream;
     }

@@ -74,7 +74,7 @@ export class Zip1 extends Zip {
         return this.entriesCount() > 0;
     }
 
-    public hasEntry(entryPath: string): boolean {
+    public async hasEntry(entryPath: string): Promise<boolean> {
         return this.hasEntries()
             && this.zip.entries()[entryPath];
     }

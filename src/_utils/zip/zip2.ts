@@ -6,8 +6,8 @@
 // ==LICENSE-END==
 
 import * as debug_ from "debug";
-import * as request from "request";
-import * as requestPromise from "request-promise-native";
+import { http } from "follow-redirects";
+import { IncomingMessage } from "http";
 import * as yauzl from "yauzl";
 
 import { isHTTP } from "../http/UrlUtils";
@@ -69,10 +69,6 @@ export class Zip2 extends Zip {
 
     private static async loadPromiseHTTP(filePath: string): Promise<IZip> {
 
-        // No response streaming! :(
-        // https://github.com/request/request-promise/issues/90
-        const needsStreamingResponse = true;
-
         return new Promise<IZip>(async (resolve, reject) => {
 
             const failure = (err: any) => {
@@ -80,7 +76,7 @@ export class Zip2 extends Zip {
                 reject(err);
             };
 
-            const success = async (res: request.RequestResponse) => {
+            const success = async (res: IncomingMessage) => {
                 if (res.statusCode && (res.statusCode < 200 || res.statusCode >= 300)) {
                     failure("HTTP CODE " + res.statusCode);
                     return;
@@ -123,7 +119,7 @@ export class Zip2 extends Zip {
                         reject(err);
                     };
 
-                    const success_ = async (ress: request.RequestResponse) => {
+                    const success_ = async (ress: IncomingMessage) => {
                         if (ress.statusCode && (ress.statusCode < 200 || ress.statusCode >= 300)) {
                             failure_("HTTP CODE " + ress.statusCode);
                             return;
@@ -179,31 +175,12 @@ export class Zip2 extends Zip {
                             });
                     };
 
-                    if (needsStreamingResponse) {
-                        request.get({
-                            headers: {},
-                            method: "GET",
-                            uri: filePath,
-                        })
-                            .on("response", success_)
-                            .on("error", failure_);
-                    } else {
-                        let ress: requestPromise.FullResponse;
-                        try {
-                            // tslint:disable-next-line:await-promise no-floating-promises
-                            ress = await requestPromise({
-                                headers: {},
-                                method: "GET",
-                                resolveWithFullResponse: true,
-                                uri: filePath,
-                            });
-                        } catch (err) {
-                            failure_(err);
-                            return;
-                        }
-
-                        await success_(ress);
-                    }
+                    http.get({
+                        ...new URL(filePath),
+                        headers: {},
+                    })
+                        .on("response", success_)
+                        .on("error", failure_);
 
                     return;
                 }
@@ -249,34 +226,15 @@ export class Zip2 extends Zip {
                     });
             };
 
-            if (needsStreamingResponse) {
-                request.get({
-                    headers: {},
-                    method: "HEAD",
-                    uri: filePath,
-                })
-                    .on("response", success)
-                    .on("error", failure);
-            } else {
-                // TODO: instead of a HEAD request, if not supported then
-                // GET with immediate req.abort() in the response callback
-                let res: requestPromise.FullResponse;
-                try {
-                    // tslint:disable-next-line:await-promise no-floating-promises
-                    res = await requestPromise({
-                        headers: {},
-                        method: "HEAD",
-                        resolveWithFullResponse: true,
-                        uri: filePath,
-                    });
-                } catch (err) {
-                    failure(err);
-                    return;
-                }
-
-                await success(res);
-            }
-        });
+            http.request({
+                ...new URL(filePath),
+                headers: {},
+                method: "HEAD",
+            })
+                .on("response", success)
+                .on("error", failure)
+                .end();
+    });
     }
 
     private entries: IStringKeyedObject;
@@ -303,7 +261,7 @@ export class Zip2 extends Zip {
         return this.entriesCount() > 0;
     }
 
-    public hasEntry(entryPath: string): boolean {
+    public async hasEntry(entryPath: string): Promise<boolean> {
         return this.hasEntries() && this.entries[entryPath];
     }
 

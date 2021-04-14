@@ -1,5 +1,5 @@
 {
-  "name": "r2-utils-js",
+  "name": "r2-utils-rn",
   "version": "1.0.24",
   "description": "Readium 2 'utils' for NodeJS (TypeScript)",
   "keywords": [
@@ -27,7 +27,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/readium/r2-utils-js.git"
+    "url": "git+https://github.com/AULFA/r2-utils-rn.git"
   },
   "author": {
     "name": "Readium Foundation",
@@ -42,16 +42,15 @@
     }
   ],
   "bugs": {
-    "url": "https://github.com/readium/r2-utils-js/issues"
+    "url": "https://github.com/readium/r2-utils-rn/issues"
   },
-  "homepage": "https://github.com/readium/r2-utils-js",
+  "homepage": "https://github.com/AULFA/r2-utils-rn",
   "dependencies": {
     "debug": "^4.3.1",
-    "filehound": "^1.17.4",
+    "follow-redirects": "^1.13.3",
     "node-stream-zip": "^1.12.0",
+    "react-native-fs": "^2.17.0",
     "reflect-metadata": "^0.1.13",
-    "request": "^2.88.2",
-    "request-promise-native": "^1.0.9",
     "ta-json-x": "^2.5.3",
     "tslib": "^2.0.3",
     "unzipper": "^0.10.11",
@@ -61,15 +60,15 @@
   },
   "devDependencies": {
     "@types/debug": "^4.1.5",
+    "@types/follow-redirects": "^1.13.0",
     "@types/node": "^12.19.9",
-    "@types/request": "^2.48.5",
-    "@types/request-promise-native": "^1.0.17",
     "@types/yauzl": "^2.9.1",
     "@types/yazl": "^2.4.2",
     "cpy-cli": "^3.1.1",
     "cross-env": "^7.0.3",
     "cson": "^7.20.0",
     "eclint": "^2.8.1",
+    "filehound": "^1.17.4",
     "git-rev-sync": "^3.0.1",
     "json": "^10.0.0",
     "mkdirp": "^1.0.4",
@@ -89,10 +88,10 @@
   ],
   "scripts": {
     "cson2json": "sed -E \"s/#ECMASCRIPT#/es5/g\" package-scripts-build.cson > tmp-build.cson && sed -E \"s/#ECMASCRIPT#/es6-es2015/g\" package-scripts-build.cson >> tmp-build.cson && sed -E \"s/#ECMASCRIPT#/es7-es2016/g\" package-scripts-build.cson >> tmp-build.cson && sed -E \"s/#ECMASCRIPT#/es8-es2017/g\" package-scripts-build.cson >> tmp-build.cson && json -I -f package.json -e \"this.scripts=$(cat package-scripts.cson tmp-build.cson | node node_modules/.bin/cson2json)\" && rimraf tmp-*.cson",
-    "copydist": "cpy \"./dist/**/*\" ../r2-opds-js/node_modules/r2-utils-js/ --cwd=./ --parents --no-dir && cpy \"./dist/**/*\" ../r2-lcp-js/node_modules/r2-utils-js/ --cwd=./ --parents --no-dir && cpy \"./dist/**/*\" ../r2-shared-js/node_modules/r2-utils-js/ --cwd=./ --parents --no-dir && cpy \"./dist/**/*\" ../r2-streamer-js/node_modules/r2-utils-js/ --cwd=./ --parents --no-dir && cpy \"./dist/**/*\" ../r2-navigator-js/node_modules/r2-utils-js/ --cwd=./ --parents --no-dir && cpy \"./dist/**/*\" ../r2-testapp-js/node_modules/r2-utils-js/ --cwd=./ --parents --no-dir && cpy \"./dist/**/*\" ../readium-desktop/node_modules/r2-utils-js/ --cwd=./ --parents --no-dir",
+    "copydist": "cpy \"./dist/**/*\" ../r2-opds-js/node_modules/r2-utils-rn/ --cwd=./ --parents --no-dir && cpy \"./dist/**/*\" ../r2-lcp-js/node_modules/r2-utils-rn/ --cwd=./ --parents --no-dir && cpy \"./dist/**/*\" ../r2-shared-js/node_modules/r2-utils-rn/ --cwd=./ --parents --no-dir && cpy \"./dist/**/*\" ../r2-streamer-js/node_modules/r2-utils-rn/ --cwd=./ --parents --no-dir && cpy \"./dist/**/*\" ../r2-navigator-js/node_modules/r2-utils-rn/ --cwd=./ --parents --no-dir && cpy \"./dist/**/*\" ../r2-testapp-js/node_modules/r2-utils-rn/ --cwd=./ --parents --no-dir && cpy \"./dist/**/*\" ../readium-desktop/node_modules/r2-utils-rn/ --cwd=./ --parents --no-dir",
     "quick-build-dist": "npm run transpile:typescript:es8-es2017+afterdist && npm run copydist",
     "_pregitdist": "npm run build:all",
-    "gitdist": "cd ../r2-utils-js-dist/ && git checkout -B develop && (git pull || echo \"pull\") && (git --no-pager status || echo status) && ((rimraf \"*\" && echo rimrafOK) || echo rimrafNOK) && cpy ../r2-utils-js/package.json . && cpy ../r2-utils-js/package-lock.json . && cpy ../r2-utils-js/LICENSE . && cpy ../r2-utils-js/README.md . && cpy \"./docs/**/*\" ../r2-utils-js-dist/ --cwd=../r2-utils-js/ --parents --no-dir && cpy \"./dist/**/*\" ../r2-utils-js-dist/ --cwd=../r2-utils-js/ --parents --no-dir && (git add * || echo add) && (git commit -a -m \"add new dist\" || echo commit) && (git push --set-upstream origin develop || echo push) && (git --no-pager status || echo status) && cd ../r2-utils-js",
+    "gitdist": "cd ../r2-utils-rn-dist/ && git checkout -B develop && (git pull || echo \"pull\") && (git --no-pager status || echo status) && ((rimraf \"*\" && echo rimrafOK) || echo rimrafNOK) && cpy ../r2-utils-rn/package.json . && cpy ../r2-utils-rn/package-lock.json . && cpy ../r2-utils-rn/LICENSE . && cpy ../r2-utils-rn/README.md . && cpy \"./docs/**/*\" ../r2-utils-rn-dist/ --cwd=../r2-utils-rn/ --parents --no-dir && cpy \"./dist/**/*\" ../r2-utils-rn-dist/ --cwd=../r2-utils-rn/ --parents --no-dir && (git add * || echo add) && (git commit -a -m \"add new dist\" || echo commit) && (git push --set-upstream origin develop || echo push) && (git --no-pager status || echo status) && cd ../r2-utils-rn",
     "start": "cross-env DEBUG=r2:* node \"./dist/es6-es2015/src/_utils/perf-cli.js\" ./file.epub",
     "prepare_": "npm run build:all && npm test",
     "prepublish_": "npm run prepare_",

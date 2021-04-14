@@ -6,9 +6,9 @@
 // ==LICENSE-END==
 
 import * as debug_ from "debug";
-import * as filehound from "filehound";
-import * as fs from "fs";
 import * as path from "path";
+import * as rnfs from "react-native-fs";
+import * as stream from "stream";
 
 import { IStreamAndLength, IZip, Zip } from "./zip";
 
@@ -38,26 +38,27 @@ export class ZipExploded extends Zip {
         return true; // TODO: hacky
     }
 
-    public hasEntry(entryPath: string): boolean {
-        return this.hasEntries()
-            && fs.existsSync(path.join(this.dirPath, entryPath));
+    public async hasEntry(entryPath: string): Promise<boolean> {
+        try {
+            await rnfs.stat(path.join(this.dirPath, entryPath));
+            return this.hasEntries();
+        } catch (_) {
+            return false;
+        }
     }
 
     public async getEntries(): Promise<string[]> {
 
         return new Promise<string[]>(async (resolve, _reject) => {
 
-            const dirPathNormalized = fs.realpathSync(this.dirPath);
+            const dirStats = await rnfs.stat(this.dirPath);
+            const dirPathNormalized = dirStats.originalFilepath;
 
-            const files: string[] = await filehound.create()
-                // .discard("node_modules")
-                // .depth(5)
-                .paths(this.dirPath)
-                // .ext([".epub", ".epub3", ".cbz"])
-                .find();
+            const files: rnfs.ReadDirItem[] = await rnfs.readDir(this.dirPath);
 
-            const adjustedFiles = files.map((file) => {
-                const filePathNormalized = fs.realpathSync(file);
+            const adjustedFiles = await Promise.all(files.map(async (file) => {
+                const fileStats = await rnfs.stat(file.path);
+                const filePathNormalized = fileStats.originalFilepath;
 
                 let relativeFilePath = filePathNormalized.replace(dirPathNormalized, "");
                 debug(relativeFilePath);
@@ -68,7 +69,7 @@ export class ZipExploded extends Zip {
                 }
 
                 return relativeFilePath;
-            });
+            }));
             resolve(adjustedFiles);
         });
     }
@@ -77,19 +78,24 @@ export class ZipExploded extends Zip {
 
         // debug(`entryStreamPromise: ${entryPath}`);
 
-        if (!this.hasEntries() || !this.hasEntry(entryPath)) {
+        const hasEntry = await this.hasEntry(entryPath);
+
+        if (!this.hasEntries() || !hasEntry) {
             return Promise.reject("no such path in zip exploded: " + entryPath);
         }
 
         const fullPath = path.join(this.dirPath, entryPath);
-        const stats = fs.lstatSync(fullPath);
+        const stats = await rnfs.stat(fullPath);
+        const content = await rnfs.readFile(fullPath);
+
+        const fileStream = stream.Readable.from(content);
 
         const streamAndLength: IStreamAndLength = {
-            length: stats.size,
+            length: Number(stats.size),
             reset: async () => {
                 return this.entryStreamPromise(entryPath);
             },
-            stream: fs.createReadStream(fullPath, { autoClose: false }),
+            stream: fileStream,
         };
 
         return Promise.resolve(streamAndLength);

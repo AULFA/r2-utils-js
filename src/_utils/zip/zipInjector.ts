@@ -6,7 +6,7 @@
 // ==LICENSE-END==
 
 import * as debug_ from "debug";
-import * as fs from "fs";
+import * as rnfs from "react-native-fs";
 import * as yauzl from "yauzl";
 import * as yazl from "yazl";
 
@@ -127,16 +127,18 @@ function injectObjectInZip(
 
             zipfile.end();
 
-            const destStream2 = fs.createWriteStream(destPathFINAL);
-            zipfile.outputStream.pipe(destStream2);
-            // response.on("end", () => {
-            // });
-            destStream2.on("finish", () => {
-                doneCallback();
-            });
-            destStream2.on("error", (ere) => {
-                zipError(ere);
-            });
+            const zipContent = zipfile.outputStream.read();
+            if (zipContent != null) {
+                rnfs.writeFile(destPathFINAL, zipContent.toString())
+                    .then(() => {
+                        doneCallback();
+                    })
+                    .catch((ere) => {
+                        zipError(ere);
+                    });
+            } else {
+                zipError("zip file stream content is null");
+            }
         });
 
         zip.on("close", () => {
