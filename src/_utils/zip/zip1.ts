@@ -6,7 +6,9 @@
 // ==LICENSE-END==
 
 import * as debug_ from "debug";
-import StreamZip = require("node-stream-zip");
+import * as JSZip from "jszip";
+import * as rnfs from "react-native-fs";
+import {PassThrough} from "stream";
 
 import { IStreamAndLength, IZip, Zip } from "./zip";
 
@@ -17,42 +19,10 @@ const debug = debug_("r2:utils#zip/zip1");
 export class Zip1 extends Zip {
 
     public static async loadPromise(filePath: string): Promise<IZip> {
+        const fileContent = await rnfs.readFile(filePath, "base64");
+        const zip = await new JSZip().loadAsync(fileContent, {base64: true});
 
-        return new Promise<IZip>((resolve, reject) => {
-
-            const zip = new StreamZip({
-                file: filePath,
-                storeEntries: true,
-            });
-
-            zip.on("error", (err: any) => {
-                debug("--ZIP error: " + filePath);
-                debug(err);
-
-                reject(err);
-            });
-
-            zip.on("entry", (_entry: any) => {
-                // console.log("--ZIP: entry");
-                // debug(entry.name);
-            });
-
-            zip.on("extract", (entry: any, file: any) => {
-                debug("--ZIP extract:");
-                debug(entry.name);
-                debug(file);
-            });
-
-            zip.on("ready", () => {
-                // console.log("--ZIP: ready");
-                // console.log(zip.entriesCount);
-
-                // const entries = zip.entries();
-                // console.log(entries);
-
-                resolve(new Zip1(filePath, zip));
-            });
-        });
+        return new Zip1(filePath, zip);
     }
 
     private constructor(readonly filePath: string, readonly zip: any) {
@@ -61,13 +31,10 @@ export class Zip1 extends Zip {
 
     public freeDestroy(): void {
         debug("freeDestroy: Zip1 -- " + this.filePath);
-        if (this.zip) {
-            this.zip.close();
-        }
     }
 
     public entriesCount(): number {
-        return this.zip.entriesCount;
+        return Object.keys((this.zip as JSZip).files).length;
     }
 
     public hasEntries(): boolean {
@@ -75,22 +42,18 @@ export class Zip1 extends Zip {
     }
 
     public async hasEntry(entryPath: string): Promise<boolean> {
-        return this.hasEntries()
-            && this.zip.entries()[entryPath];
+        return this.hasEntries() && (this.zip as JSZip).file(entryPath) != null;
     }
 
     public async getEntries(): Promise<string[]> {
-
         if (!this.hasEntries()) {
             return Promise.resolve([]);
         }
-        return Promise.resolve(Object.keys(this.zip.entries()));
+
+        return Promise.resolve(Object.keys((this.zip as JSZip).files));
     }
 
     public async entryStreamPromise(entryPath: string): Promise<IStreamAndLength> {
-
-        // debug(`entryStreamPromise: ${entryPath}`);
-
         if (!this.hasEntries() || !this.hasEntry(entryPath)) {
             return Promise.reject("no such path in zip: " + entryPath);
         }
@@ -104,25 +67,18 @@ export class Zip1 extends Zip {
         //     resolve(streamAndLength);
         // });
 
-        return new Promise<IStreamAndLength>((resolve, reject) => {
+        const entry = (this.zip as JSZip).file(entryPath);
+        const content = await entry!.async("text");
 
-            this.zip.stream(entryPath, (err: any, stream: NodeJS.ReadableStream) => {
-                if (err) {
-                    reject(err);
-                    return;
-                }
+        const contentStream = new PassThrough();
+        contentStream.end(content);
 
-                const entry = this.zip.entries()[entryPath];
-
-                const streamAndLength: IStreamAndLength = {
-                    length: entry.size,
-                    reset: async () => {
-                        return this.entryStreamPromise(entryPath);
-                    },
-                    stream,
-                };
-                resolve(streamAndLength);
-            });
-        });
+        return {
+            length: content.length,
+            reset: async () => {
+                return this.entryStreamPromise(entryPath);
+            },
+            stream: contentStream,
+        };
     }
 }

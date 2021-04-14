@@ -7,5 +7,4 @@
 
 // declare module "*";
 
-declare module "node-stream-zip";
 declare module "unzipper";

@@ -8,7 +8,7 @@
 import * as debug_ from "debug";
 import * as path from "path";
 import * as rnfs from "react-native-fs";
-import * as stream from "stream";
+import {PassThrough} from "stream";
 
 import { IStreamAndLength, IZip, Zip } from "./zip";
 
@@ -88,14 +88,15 @@ export class ZipExploded extends Zip {
         const stats = await rnfs.stat(fullPath);
         const content = await rnfs.readFile(fullPath);
 
-        const fileStream = stream.Readable.from(content);
+        const contentStream = new PassThrough();
+        contentStream.end(content);
 
         const streamAndLength: IStreamAndLength = {
             length: Number(stats.size),
             reset: async () => {
                 return this.entryStreamPromise(entryPath);
             },
-            stream: fileStream,
+            stream: contentStream,
         };
 
         return Promise.resolve(streamAndLength);

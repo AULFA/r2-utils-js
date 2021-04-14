@@ -50,7 +50,7 @@ exec("npm --version", function(execError, stdin, stderr) {
         if (branch.indexOf(detached) === 0) {
             branch = branch.substr(detached.length);
         }
-        const gitUrlBase = "https://github.com/readium/r2-utils-rn/";
+        const gitUrlBase = "https://github.com/AULFA/r2-utils-rn/";
         json = {
             "node": process.version.replace("v", ""),
             "npm": npmVersion,
